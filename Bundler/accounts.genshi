@@ -31,21 +31,25 @@
       if existing[kind][name][key] != desired[kind][name][key]:
         return 'mod'
 
-  def key_files(group):
-    try:
-      elements = key_group[group]
-    except KeyError:
-      raise TemplateError, 'Key group "%s" is not defined' % group
+  def key_files(group=None, elements=None):
+    if elements is None:
+      try:
+        elements = key_group[group]
+      except KeyError:
+        raise TemplateError, 'Key group "%s" is not defined' % group
     file_names = list()
     for el in elements:
       if el.tag == 'PubKey':
         file_names.append(el.get('file'))
       elif el.tag == 'KeyGroup':
         file_names.extend(key_files(el.get('name')))
+      elif el.tag == 'Client' or el.tag == 'Group':
+        if matches_me(el):
+          file_names.extend(key_files(elements=el))
     return file_names
 
   def auth_keys(group):
-    keys = ['#', '# Automatically created by Bcfg2.', '#']
+    keys = []
     for file in key_files(group):
       path = key_directory + '/' + file
       try:
@@ -164,7 +168,7 @@
        name="$user.home/.ssh/authorized_keys"
        owner="$name"
        group="$user.group"
-       mode="444"
+       mode="644"
        paranoid="true">${auth_keys(user.key_group)}</BoundPath>
     </py:if>
   </py:for>
